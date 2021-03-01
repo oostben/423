@@ -206,7 +206,7 @@ def calculate_mean_SD(stocks):
 
     while int(input("Would you like to calculate something on efficient frontier? type 1 if yes")) == 1:
         print("would you like to calculate given a return? input 1")
-        print("would you like to calculate a SD? input 2")
+        print("would you like to calculate given a SD? input 2")
 
         # print("would you like to calculate a return given a sigma? input 3")
         # print("would you like to calculate a SD given a sigma? input 4")
@@ -272,7 +272,7 @@ def calculate_mean_SD(stocks):
 
         
         while 1 == int(input("would you like to calculate somehting on this efficient frontier? 1 if yes")):
-            if option3 == int(input("calculate a return given an sd --> 1 \n calculate a sd given an return --> 2 \nwhats your choice?")):
+            if 1 == int(input("calculate a return given an sd --> 1 \n calculate a sd given an return --> 2 \nwhats your choice?")):
                 sd = float(input("Whats your sd?"))
                 print("[sqrt(1) / [(m - rfr 1) c_inv (m - rfr1)^T))]] * (return - rfr)")
                 first_term_bottom = np.matmul(m - (rfr * ones), np.matmul(c_inv, (m - (rfr * ones)).transpose()))
