@@ -192,6 +192,13 @@ class Tree:
             print("part_contributed = (child_value * child_p_val) / (1+self.r)\n")
         print("$$$$$$$$$$$$$$$$$$$$")
         cur_val_of_node = payoff_func(curr_node.get_price(), strike_price)
+
+        print("(",curr_node.row, curr_node.index,")")
+        if cur_val_of_node >= expected_val_of_node:
+            print("execute early")
+        else:
+            print("do not execute early")
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
         return max(cur_val_of_node, expected_val_of_node)
 
     def label(self):
