@@ -101,10 +101,27 @@ def hedge(quantity, call, r, S_0, T, X, sd, S_t, t):
     print("hedged at t=", t, ", with S(",t,") =", S_t, ":", hedged)
     print("unhedged at t=", t, ", with S(",t,") =", S_t, ":", unhedged)
 
-# hedge(quantity=-300, call=True, r=.1, S_0=100, T=120, X=100, sd=.2, S_t=99, t=1)
-print("----------------------------------------------------------------------------------")
-hedge(quantity=5000, call=False, r=.05, S_0=20, T=90, X=20, sd=.35, S_t=19.5, t=1)
-print("----------------------------------------------------------------------------------")
-hedge(quantity=5000, call=False, r=.05, S_0=20, T=90, X=20, sd=.35, S_t=20.0, t=1)
-print("----------------------------------------------------------------------------------")
-hedge(quantity=5000, call=False, r=.05, S_0=20, T=90, X=20, sd=.35, S_t=20.5, t=1)
+def prompt():
+    quantity_in = float(input("How many options are you hedging?"))
+    choice = int(input("Are they calls or options?\n1-> calls\n2-> puts"))
+    call_in = True
+    if choice == 2:
+        call_in = False
+    r_in = float(input("What is the interest rate r? (.05 or something)"))
+    S_0_in = float(input("What is the price of the stock at time zero (S_0)?"))
+    T_in = float(input("How many days until the options expire ?(enter 90 for 90 day options)"))
+    X_in = float(input("What is the strike price of the options?"))
+    sd_in = float(input("What is the sd  of the stock?"))
+    
+    compare_prices = []
+    price = 9999999999
+    while price != -1:
+        price = float(input("At what prices do you want to compare the delta hedged portfolio to the unhedged? input -1 to stop. "))
+        if price != -1:
+            compare_prices.append(price)
+    t_in = float(input("How many days in the future do you want to compare the hedged and unhedged portfolios?"))
+
+    for price in compare_prices:
+        print("----------------------------------------------------------------------------------")
+        hedge(quantity=quantity_in, call=call_in, r=r_in, S_0=S_0_in, T=T_in, X=X_in, sd=sd_in, S_t=price, t=t_in)
+prompt()

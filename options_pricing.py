@@ -157,9 +157,13 @@ class Tree:
         print("European Put Price = ", put_price)
         print("**********************************")
     def calculate_american(self,strike_price):
+        call_price = 0
+        for scenario in self.scenarios:
+            call_price += scenario[0] * self.call_payoff(scenario[1], strike_price)
+        call_price /= ((1+self.r)**(self.depth))
         print("**********************************")
         print("American Option Pricing")
-        print("American Call Price = ", self.tree_walk_helper(self.root, self.call_payoff, strike_price))
+        print("American Call Price = ", call_price)
         print("American Put Price = ", self.tree_walk_helper(self.root, self.put_payoff, strike_price))
         print("**********************************")
     def calculate_custom(self,strike_price):
@@ -186,6 +190,7 @@ class Tree:
             print("child_p_val =", child[1])
             print("part_contributed =", child[2])
             print("part_contributed = (child_value * child_p_val) / (1+self.r)\n")
+        print("$$$$$$$$$$$$$$$$$$$$")
         cur_val_of_node = payoff_func(curr_node.get_price(), strike_price)
         return max(cur_val_of_node, expected_val_of_node)
 
