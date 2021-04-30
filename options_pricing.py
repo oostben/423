@@ -9,6 +9,8 @@ def yes_no():
 
 def solve_for_p(r,u,d):
     if r == -1 or u == -1 or d == -1: return -1
+    print("(r-d)/(u-d)")
+    print("=",(r-d)/(u-d))
     return (r-d)/(u-d)
 
 def solve_for_u(p,r,d):
@@ -16,6 +18,8 @@ def solve_for_u(p,r,d):
     #p(u-d) = (r-d)
     #(u-d) = (r-d)/p
     #u = ((r-d)/p) + d
+    print("((r-d)/p) + d")
+    print("=",((r-d)/p) + d)
     return ((r-d)/p) + d
 
 def solve_for_d(p,r,u):
@@ -29,6 +33,8 @@ def solve_for_d(p,r,u):
     #u-(r/p) = d-(d/p)
     #u-(r/p) = d*(1-(1/p))
     #(u-(r/p))/(1-(1/p)) = d
+    print("(u-(r/p))/(1-(1/p))")
+    print("=", (u-(r/p))/(1-(1/p)))
     return (u-(r/p))/(1-(1/p))
 
 def print_tree(root):
@@ -99,17 +105,24 @@ class Node:
 
 class Tree:
     def __init__(self):
-        self.custom_payoff = None
         self.root = None
         self.depth = 0
+        self.scenarios = []
+
         self.print_welcome_mess()
-        self.select_custom_option()
         self.get_r()
         self.root = Node()
         self.label()
         self.solve()
         print_tree(self.root)
-        self.scenarios = []
+        self.w_calc()
+        self.option_pricing_helper()
+
+    def option_pricing_helper(self):
+        strike_price = float(input("What strike price do you want?"))
+        self.calculate_european(strike_price)
+        self.calculate_american(strike_price)
+        self.calculate_custom(strike_price)
     
     def w_calc(self):
         depth_calculated = False
@@ -120,10 +133,10 @@ class Tree:
                 q.append(child)
             if len(curr_node.children) == 0:
                 w_temp = 1
-                curr_node2 = curr_node.copy()
+                curr_node2 = curr_node
                 while curr_node2.parent is not None:
                     if not depth_calculated: self.depth += 1
-                    w_temp *= curr_node2.get_p_val
+                    w_temp *= curr_node2.get_p_val()
                     curr_node2 = curr_node2.parent
                 depth_calculated = True
                 self.scenarios.append([w_temp, curr_node.price])
@@ -134,8 +147,8 @@ class Tree:
         call_price = 0
         put_price = 0
         for scenario in self.scenarios:
-            call_price += scenario[0] * self.call_payoff(scenario[1],strike_price)
-            put_price += scenario[0] * self.put_payoff(scenario[1],strike_price)
+            call_price += scenario[0] * self.call_payoff(scenario[1], strike_price)
+            put_price += scenario[0] * self.put_payoff(scenario[1], strike_price)
         call_price /= ((1+self.r)**(self.depth))
         put_price /= ((1+self.r)**(self.depth))
         print("**********************************")
@@ -143,6 +156,38 @@ class Tree:
         print("European Call Price = ", call_price)
         print("European Put Price = ", put_price)
         print("**********************************")
+    def calculate_american(self,strike_price):
+        print("**********************************")
+        print("American Option Pricing")
+        print("American Call Price = ", self.tree_walk_helper(self.root, self.call_payoff, strike_price))
+        print("American Put Price = ", self.tree_walk_helper(self.root, self.put_payoff, strike_price))
+        print("**********************************")
+    def calculate_custom(self,strike_price):
+        print("**********************************")
+        print("Custom Option Pricing")
+        print("Custom Price = ", self.tree_walk_helper(self.root, self.custom_payoff, strike_price))
+        print("**********************************")
+
+    def tree_walk_helper(self, curr_node, payoff_func, strike_price):
+        if len(curr_node.children) == 0:
+            return payoff_func(curr_node.get_price(), strike_price)
+        expected_val_of_node = 0
+        storage = []
+        for child in curr_node.children:
+            child_value = self.tree_walk_helper(child, payoff_func, strike_price)
+            child_p_val = child.get_p_val()
+            addition = (child_value * child_p_val) / (1+self.r)
+            storage.append([child_value, child_p_val, addition])
+            expected_val_of_node += (child_value * child_p_val) / (1+self.r)
+        print("Tree Walk -> Node: ", curr_node.row, curr_node.index)
+        print("expected value of the node calculation = ")
+        for child in storage:
+            print("child_value =", child[0])
+            print("child_p_val =", child[1])
+            print("part_contributed =", child[2])
+            print("part_contributed = (child_value * child_p_val) / (1+self.r)\n")
+        cur_val_of_node = payoff_func(curr_node.get_price(), strike_price)
+        return max(cur_val_of_node, expected_val_of_node)
 
     def label(self):
         row = 0 
@@ -169,7 +214,7 @@ class Tree:
         while len(curr_node.children) > 0:
             curr_node = curr_node.children[0]
             depth += 1
-        for i in range(depth+1):
+        for _ in range(depth+1):
             self.solve_for_p_vals_off_others()
             self.solve_for_p_vals_off_price()
             self.solve_for_price_off_p_val()
@@ -209,6 +254,7 @@ class Tree:
                     if i == 1:
                         d = (child.get_price()-parent_price)/parent_price
                 if missing_price: continue
+                print("Solve for p_val off of price, node:", curr_node.row, curr_node.index)
                 curr_node.parent.children[0].p_val = solve_for_p(self.r,u,d)
                 curr_node.parent.children[1].p_val = 1 - curr_node.parent.children[0].p_val
             for child in curr_node.children:
@@ -239,9 +285,11 @@ class Tree:
             parent_price = curr_node.parent.get_price()
             p = curr_node.parent.children[0].get_p_val()
             if missing_u and not missing_d:
+                print("Solve for u off of p_val and d:", curr_node.row, curr_node.index)
                 d = (curr_node.parent.children[1].get_price() - parent_price) / parent_price
                 curr_node.parent.children[0].price = (solve_for_u(p, self.r, d) + 1) * parent_price
             if not missing_u and missing_d:
+                print("Solve for d off of p_val and u:", curr_node.row, curr_node.index)
                 u = (curr_node.parent.children[0].get_price() - parent_price) / parent_price
                 curr_node.parent.children[1].price = (solve_for_d(p, self.r, u) + 1) * parent_price
             for child in curr_node.children:
@@ -251,29 +299,31 @@ class Tree:
         print("-------------------------------------")
         print("Welcome to option pricing tool")
         print("-------------------------------------")
-
-    def select_custom_option(self):
-        print("Would you like to input a derivative?")
-        yes,no = yes_no()
-        if no:
-            self.custom_payoff = None
-            return
-        print("Define what you would like the payoff function to be.")
-        print("Use stock_price, strike_price.")
-        payoff_string = input()
-        custom_payoff = "def custom_payoff(stock_price=-1, strike_price = -1):\n\treturn"+ payoff_string
-        exec(custom_payoff)
-        self.custom_payoff = custom_payoff
     
     def get_r(self):
         self.r = float(input("What is r?"))
 
+    def custom_payoff(self, stock_price, strike_price):
+        return max(0, stock_price - strike_price)**2
+
     def call_payoff(self, stock_price=-1, strike_price = -1):
-        return max(0,stock_price-strike_price)
+        return max(0, stock_price-strike_price)
     
     def put_payoff(self, stock_price=-1, strike_price = -1):
-        return max(0,strike_price-stock_price)
+        return max(0, strike_price-stock_price)
 
+    # def select_custom_option(self):
+    #     print("Would you like to input a derivative?")
+    #     yes,no = yes_no()
+    #     if no:
+    #         self.custom_payoff = None
+    #         return
+    #     print("Define what you would like the payoff function to be.")
+    #     print("Use stock_price, strike_price.")
+    #     payoff_string = input()
+    #     custom_payoff = "def custom_payoff(stock_price=-1, strike_price = -1):\n\treturn"+ payoff_string
+    #     exec(custom_payoff)
+    #     self.custom_payoff = custom_payoff
 
 
 
