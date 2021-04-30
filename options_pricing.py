@@ -20,14 +20,16 @@ def solve_for_u(p,r,d):
 
 def solve_for_d(p,r,u):
     if p == -1 or r == -1 or u == -1: return -1
+    #p = (r-d)/(u-d)
+
     #p(u-d) = (r-d)
     #(u-d) = (r-d)/p
     #(u-d) = (r/p)-(d/p)
     #u = (r/p)-(d/p)+d
-    #u+(r/p) = d-(d/p)
-    #u+(r/p) = d*(1-(1/p))
-    #(u+(r/p))/(1-(1/p)) = d
-    return (u+(r/p))/(1-(1/p))
+    #u-(r/p) = d-(d/p)
+    #u-(r/p) = d*(1-(1/p))
+    #(u-(r/p))/(1-(1/p)) = d
+    return (u-(r/p))/(1-(1/p))
 
 def print_tree(root):
     print("############################### Tree Print ###############################")
@@ -99,26 +101,95 @@ class Tree:
     def __init__(self):
         self.custom_payoff = None
         self.root = None
+        self.depth = 0
         self.print_welcome_mess()
         self.select_custom_option()
         self.get_r()
         self.root = Node()
+        self.label()
+        self.solve()
         print_tree(self.root)
+        self.scenarios = []
     
+    def w_calc(self):
+        depth_calculated = False
+        q = [self.root]
+        while len(q) > 0:
+            curr_node = q.pop(0)
+            for child in curr_node.children:
+                q.append(child)
+            if len(curr_node.children) == 0:
+                w_temp = 1
+                curr_node2 = curr_node.copy()
+                while curr_node2.parent is not None:
+                    if not depth_calculated: self.depth += 1
+                    w_temp *= curr_node2.get_p_val
+                    curr_node2 = curr_node2.parent
+                depth_calculated = True
+                self.scenarios.append([w_temp, curr_node.price])
+        for index, scenario in enumerate(self.scenarios):
+            print("Scenario #", index, " = ", scenario[0])
+    
+    def calculate_european(self, strike_price):
+        call_price = 0
+        put_price = 0
+        for scenario in self.scenarios:
+            call_price += scenario[0] * self.call_payoff(scenario[1],strike_price)
+            put_price += scenario[0] * self.put_payoff(scenario[1],strike_price)
+        call_price /= ((1+self.r)**(self.depth))
+        put_price /= ((1+self.r)**(self.depth))
+        print("**********************************")
+        print("Euopean Option Pricing")
+        print("European Call Price = ", call_price)
+        print("European Put Price = ", put_price)
+        print("**********************************")
+
+    def label(self):
+        row = 0 
+        index = 0
+        q = [self.root, "sentinal"]
+        while len(q) > 0:
+            curr_node = q.pop(0)
+
+            if curr_node == "sentinal":
+                row +=1
+                index = 0
+                if len(q) != 0:
+                    q.append("sentinal")
+            else:
+                curr_node.row = row
+                curr_node.index = index
+                index +=1
+                for child in curr_node.children:
+                    q.append(child)
+        
+    def solve(self):
+        depth = 0
+        curr_node = self.root
+        while len(curr_node.children) > 0:
+            curr_node = curr_node.children[0]
+            depth += 1
+        for i in range(depth+1):
+            self.solve_for_p_vals_off_others()
+            self.solve_for_p_vals_off_price()
+            self.solve_for_price_off_p_val()
+
     def solve_for_p_vals_off_others(self):
         q =[self.root]
         while len(q) != 0:
             curr_node = q.pop(0)
             if curr_node.parent != None:
                 unkown_p_count = 0
+                index_of_unkown = 0
                 sum_of_other_p_vals = 0
-                for child in curr_node.parent.children:
+                for index, child in enumerate(curr_node.parent.children):
                     if child.get_p_val() == -1:
                         unkown_p_count += 1
+                        index_of_unkown = index
                     else:
                         sum_of_other_p_vals += child.get_p_val()
                 if unkown_p_count == 1:
-                    curr_node.p_val = 1 - sum_of_other_p_vals
+                    curr_node.parent.children[index_of_unkown].p_val = 1 - sum_of_other_p_vals
             for child in curr_node.children:
                 q.append(child)
 
@@ -138,16 +209,19 @@ class Tree:
                     if i == 1:
                         d = (child.get_price()-parent_price)/parent_price
                 if missing_price: continue
-                curr_node.parent.children[0].p_val = solve_for_p(self.r,u,d):
+                curr_node.parent.children[0].p_val = solve_for_p(self.r,u,d)
                 curr_node.parent.children[1].p_val = 1 - curr_node.parent.children[0].p_val
             for child in curr_node.children:
                 q.append(child)
 
     def solve_for_price_off_p_val(self):
         q =[self.root]
-        while len(q) != 0:
+        while len(q) > 0:
             curr_node = q.pop(0)
-            if curr_node.parent == None: continue
+            if curr_node.parent == None: 
+                for child in curr_node.children:
+                    q.append(child)
+                continue
             missing_p_val = False
             missing_u = False
             missing_d = False
@@ -157,18 +231,19 @@ class Tree:
                 if child.get_price() == -1: 
                     if i == 0: missing_u = True
                     if i == 1: missing_d = True
-            if missing_p_val: continue
-            if missing_u and missing_d: continue
-            if not missing_u and not missing_d: continue
+            if (missing_p_val) or (missing_u and missing_d) or (not missing_u and not missing_d): 
+                for child in curr_node.children:
+                    q.append(child)
+                continue
 
             parent_price = curr_node.parent.get_price()
-            p = curr_node.parent.get_p_val()
+            p = curr_node.parent.children[0].get_p_val()
             if missing_u and not missing_d:
                 d = (curr_node.parent.children[1].get_price() - parent_price) / parent_price
-                curr_node.parent.children[0].price = solve_for_u(p, self.r, d)
+                curr_node.parent.children[0].price = (solve_for_u(p, self.r, d) + 1) * parent_price
             if not missing_u and missing_d:
                 u = (curr_node.parent.children[0].get_price() - parent_price) / parent_price
-                curr_node.parent.children[1].price = solve_for_d(p, self.r, u):
+                curr_node.parent.children[1].price = (solve_for_d(p, self.r, u) + 1) * parent_price
             for child in curr_node.children:
                 q.append(child)
 
@@ -190,7 +265,7 @@ class Tree:
         exec(custom_payoff)
         self.custom_payoff = custom_payoff
     
-    def get_r():
+    def get_r(self):
         self.r = float(input("What is r?"))
 
     def call_payoff(self, stock_price=-1, strike_price = -1):
